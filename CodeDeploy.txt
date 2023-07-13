@@ -1,3 +1,78 @@
+Timing:
+-------
+10	28
+20	56
+30	84
+40	112
+50	140
+60	168
+70	196
+75	210
+
+Flow:
+-----
+CW->filter-pattern->Lambda->tagResource
+   Sched.rule->Lambda->deleteResource
+
+AWS service->KinDataStream->KinDataAnal->S3/KinDataStr
+
+Sched.Rule->Lambda->RefreshCacheInFileGatwayToFetchFromS3
+
+CCommit->CodePipeline->StepF
+
+CCommit->EvtBridge->CodeBuild->Lambda->CCommit
+
+ALB->path->Lambda/EC2/on-prem
+
+CPipeline->notify->CStar
+
+CDeploy->SNS->Mail
+
+CBuild->CArtifact OR Docker OR ECR
+
+TAdvisor->EvtBridge->Lambda->deleteKeys_in_IAM
+
+EC2+CWAgent->CWLogGrp->metricFilter->CWAlarm->SNS->Mail
+
+Config->rule->mark_NON_COMPLIANT->SSM->AutomRunbook
+
+Health->EOLEvent->EventBridge->SNS->Mail
+      ->PersHealthDashBoard
+
+CArtifact->EvtBridge->ECImgBuilder->CW->metricFilter
+
+OrgMgmtAcct->ResourceAccesManager->TransitGW
+
+AutoScaling->SNS->Mail
+
+GuardDuty->Lists:TrustedIP/ThreatIP|Settings:ServiceRoles,Findigs->S3
+
+AppConfig->driftDetection->Stack
+
+WAF-Protection:CF,APIGW,ALB,AppSync,Cognito,AppRunner
+
+ECSAnywhere->Fargate/on-prem with ECSAgent
+
+FWManager->SecurityHub OR WAF (can do cross-account)
+
+ControlTower OUs: Sec., Sandbox, Production, Non-Prod, SharedServ, Suspend
+  Detective Guardrails used for Govern. / Preventive GR disallow API 
+  actions via SCPs
+
+CWLogs->SubscrFilter->KinDataFH OR KinDatStr->Lambda->OpenSearch
+
+Config->Aggregator->AccountsAndRegions->AggregatedView
+
+CTrail->logFileIntegrity->Trail+SHA256digestFile_in_S3
+
+Inspector->EC2/ImageInECR/Lambda->createFinding_with_riskScore
+
+ALB->latencyMetric=TargetResponseTime
+
+SSM->AutomDoc->launchFromBaseAMI->CustInstance->createCustAMI
+  
+
+
 CFN CloudFormation:
 -------------------
 *StackSet: Multi-Region, Multi-Account
@@ -172,6 +247,7 @@ DEPLOYMENT_GROUP_NAME – The name of the deployment group in CodeDeploy that is
 DEPLOYMENT_GROUP_ID – The ID of the deployment group in CodeDeploy that is part of the current deployment (for example, b1a2189b-dd90-4ef5-8f40-4c1c5EXAMPLE).
 
 LIFECYCLE_EVENT – The name of the current deployment lifecycle event (for example, AfterInstall).
+*possible: Set BlueInstanceTerminationOption=TERMINATE and terminationWaitTimeInMinutes=1-hour waiting period
 
 CodePipeline:
 -----------------
@@ -191,6 +267,17 @@ INVOKE action provider
   (custom action possible, e.g. on-prem with job worker)
   Lambda, Step Functions
 
+EB Elastic Beanstalk
+--------------------
+  Apache Tomcat for Java applications
+  Apache HTTP Server for PHP applications
+  Apache HTTP Server for Python applications
+  Nginx or Apache HTTP Server for Node.js applications
+  Passenger or Puma for Ruby applications
+  Microsoft IIS for .NET applications
+Persistent config files: create .ebextensions/ in root of app bundle, place config files there.
+
+
 OpsWorks: https://tutorialsdojo.com/aws-opsworks/
 ---------
 EC2 and on-prem, Linux and Windows
@@ -209,15 +296,11 @@ LC events: setup, configure, deploy, undeploy, shutdown
 Monitoring: metrics+logs to CloudWatch, API calls to CloudTrail
 
 
-EB Elastic Beanstalk
---------------------
-Apache Tomcat for Java applications
-Apache HTTP Server for PHP applications
-Apache HTTP Server for Python applications
-Nginx or Apache HTTP Server for Node.js applications
-Passenger or Puma for Ruby applications
-Microsoft IIS for .NET applications
+S3:
+--
+*server access logging to a different S3 bucket
+*CloudTrail data events – s3 object-level API operations, includes PUT, GET, etc.
+
 
 
 x
-end of document
