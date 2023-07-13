@@ -1,11 +1,223 @@
-CodeDeploy:
-------------------
+CFN CloudFormation:
+-------------------
+*StackSet: Multi-Region, Multi-Account
+*Nested Stacks – can contain other nested stacks
+
+UpdatePolicy
+  AWS::AutoScaling::AutoScalingGroup – AutoScalingReplacingUpdate
+      AutoscalingRollingUpdate
+e.g.
+    "UpdatePolicy": {
+      "AutoScalingRollingUpdate": {
+        "MaxBatchSize": Integer,
+        "MinInstancesInService": Integer,
+        "MinSuccessfulInstancesPercent": Integer,
+        "PauseTime": String,
+        "SuspendProcesses": [ List of processes ],
+        "WaitOnResourceSignals": Boolean
+      }
+    }
+Other policies:
+CreationPolicy
+DeletionPolicy (Snapshot, Retain, Delete)
+DependsOn (waits until specified resource is created)
+Metadata (structured data, JSON or YaML)
+UpdateReplacePolicy
+
+Dynamic References: SSM param store (+secure string), Secrets Manager
+  MyS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: '{{resolve:ssm:S3AccessControl:2}}'
+Custom resource execution: e.g. Lambda
+
+
+CloudFront: https://tutorialsdojo.com/amazon-cloudfront/
+----------
+increase your cache hit ratio: addCache-Control max-age directive to your objects, apply the longest practical value for max-age
+*routing via lowest latency
+*origin servers: S3 (normal and website endpoints), http server, ALB, Lambda function URL
+*origin failover: define primary and secondary
+*caching: 24h by default, invalidation possible
+*websocket and http(s) supported
+*geo-ip allow-list/block-list possible
+*streaming (Apple, Microsoft, ...) possible
+*monitoring: variety of reports, AWS Config can read config changes, CW metrics, performance via Server-Timing-Header
+*Security: works with Shield, WAF, R53
+*OAI restricts content to be ONLY accessible from CF
+*Field-Level-encryption possible
+*CF response headers policy can remove headers
+*signed urls: restrict access to individual files, users use a client das does not support cookies
+*signed cookies: provice access to multiple restricted files.
+  Plus you do not want to change your current URLs.
+
+
+
+
+CodeBuild: https://tutorialsdojo.com/aws-codebuild/
+----------
+
+build project: CodeBuild will run a build. It includes information such as where to get the source code, which build environment to use, the build commands to run, and where to store the build output.
+
+build environment: OS, programming language runtime, and tools used by CodeBuild to run a build.
+
+buildspec.YAML: commands to run at each phase of the build and other settings. Default: placed in the root of your source directory.
+        A collection of input files is called build input artifacts or build input and a deployable version of a source code is called build output artifact or build output.
+
+Features
+*builds your code and stores the artifacts into an Amazon S3 bucket, or you can use a build command to upload them to an artifact repository.
+        AWS CodeBuild provides build environments for
+            Java, Python, Node.js, Ruby, Go, Android, .NET Core for Linux, Docker
+* define the specific commands that you want AWS CodeBuild to perform, such as installing build tool packages, running unit tests, and packaging your code.
+* choose from three levels of compute capacity that vary by the amount of CPU and memory to best suit your development needs.
+            Build.general1.small – 3GB memory, 2 vCPU
+            Build.general1.medium – 7GB memory, 4 vCPU
+            Build.general1.large – 15GB memory, 8 vCPU
+* integrate CodeBuild into existing CI/CD workflows using its source integrations, build commands, or Jenkins integration.
+*can connect to AWS CodeCommit, S3, GitHub, GitHub Enterprise, and Bitbucket to pull source code for builds.
+*allows you to use Docker images stored in another AWS account as your build environment, by granting resource level permissions.
+*allows access Docker images from any private registry as the build environment. 
+*build results through the console, CloudWatch, or the API. The results include outcome (success or failure), build duration, output artifact location, and log location.
+*will create a temporary compute container of the class defined in the build project
+*loads it with the specified runtime environment
+*downloads the source code
+*executes the commands configured in the project
+*uploads the generated artifact to an S3 bucket
+*destroys the compute container
+*two types of caching:
+        Amazon S3 – stores the cache in an Amazon S3 bucket that is available across multiple build hosts. This is a good option for small intermediate build artifacts that are more expensive to build than to download. Not the best option for large build artifacts because they can take a long time to transfer over your network, which can affect build performance.
+        Local – stores a cache locally on a build host that is available to that build host only. This is a good option for large intermediate build artifacts because the cache is immediately available on the build host. Build performance is not impacted by network transfer time.
+        If you use a local cache, you must choose one or more of three cache modes:
+            source cache
+            Docker layer cache
+            custom cache.
+
+Monitoring and Security
+*you can specify a key stored in the AWS Key Management Service to encrypt your artifacts.
+        CodeBuild provides security and separation at the infrastructure and execution levels.
+        You can use Amazon CloudWatch to watch your builds, report when something is wrong, and take automatic actions when appropriate.
+        You can monitor your builds at two levels:
+            At the project level: These metrics are for all builds in the specified project only.
+            At the AWS account level: These metrics are for all builds in one account
+        ProjectName is the only AWS CodeBuild metrics dimension. If it is specified, then the metrics are for that project. If it is not specified, then the metrics are for the current AWS account.
+
+
+CodeCommit: https://tutorialsdojo.com/aws-codecommit/ 
+----------
+For CodeBuild: repo needs to contain buildspec.yaml
+Can trigger SNS and Lambda in the SAME Region (up to 10 triggers)
+Console: code, pull requests, commits, braches, tags, …
+Approval rule: number of users who will approve a pull req. before merge
+Tags allow to set up mail notifications to other repo users
+Pull request needs source branch and target branch
+Create-commit and create-branch can be done in AWS CLI or git client.
+Users can get temp access via SAML, Federation, Cognito
+*Monitoring: CloudTrail and CloudWatch
+*single blob must be <=2GB
+*single file <=6MB
+*max 1000 repos by default
+
+
+
+CodeDeploy: https://www.youtube.com/watch?v=lbBg9FMnnPM
+----------
+reads appspec.yaml
 EC2/on-prem
   Need CD agent installed
-  Traffic direction: in-place or blue/green
+  Deployment types: in-place or blue/green
+  Traffic shift from original set to replacement set
 Lambda
   Apps that consist of an updated version of a L. function
-  Traffic: canary, linear, all-at-once between two versions
+  Only: blue/green
+  Traffic: canary (e.g. LambdaCanary10Percent5Minutes), linear, all-at-once betw. 2 versions
 ECS
   Deploy containerized app as a task set
-  Blue/green = install updated version as a new replacement task set
+  Only: Blue/green = install updated version as a new replacement task set
+  Reroute traffic from orig app to new 
+  If successful, Original task set is terminated
+  Traffic shift: canary, linear, all-at-once
+
+CodeDeploy appspec.yaml example:
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/www/html/WordPress
+hooks:
+  BeforeInstall:
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: root
+  AfterInstall:
+    - location: scripts/change_permissions.sh
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_server.sh
+    - location: scripts/create_test_db.sh
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: scripts/stop_server.sh
+      timeout: 300
+      runas: root
+
+during each LC event, hook scripts can access the following env variables:
+APPLICATION_NAME – The name of the application in CodeDeploy that is part of the current deployment (for example, WordPress_App).
+
+DEPLOYMENT_ID – The ID CodeDeploy has assigned to the current deployment (for example, d-AB1CDEF23).
+
+DEPLOYMENT_GROUP_NAME – The name of the deployment group in CodeDeploy that is part of the current deployment (for example, WordPress_DepGroup).
+
+DEPLOYMENT_GROUP_ID – The ID of the deployment group in CodeDeploy that is part of the current deployment (for example, b1a2189b-dd90-4ef5-8f40-4c1c5EXAMPLE).
+
+LIFECYCLE_EVENT – The name of the current deployment lifecycle event (for example, AfterInstall).
+
+CodePipeline:
+-----------------
+pipeline "action categories" for creating pipeline 
+  "action groups" in "pipeline stages":
+SOURCE action provider
+   ECR, S3, CodeCommit (needs buildspec.yaml), Github
+BUILD action provider (custom action possible)
+   CodeBuild (push to CodeArtifact, DockerHub, ECR), Jenkins, …
+TEST action provider
+   CodeBuild (creates test report), Jenkins, Device Farm, …
+DEPLOY action provider
+   S3, AppConfig, CFN, ECS, EB, OpsWorks, CodeDeploy
+(manual) APPROVAL action provider
+   SNS only!
+INVOKE action provider
+  (custom action possible, e.g. on-prem with job worker)
+  Lambda, Step Functions
+
+OpsWorks: https://tutorialsdojo.com/aws-opsworks/
+---------
+EC2 and on-prem, Linux and Windows
+OpsWorks Stacks:
+  Chef cookbooks
+  Stack=group of AWS resources that form a full-stack app.
+  Stack contains groups of resources called “layers”
+  Can auto-heal your stack
+
+OpsWorks for Chef Automate:
+  Chef cookbooks
+
+OpsWorks for Puppet Enterprise:
+  Puppet enterprise master server
+LC events: setup, configure, deploy, undeploy, shutdown
+Monitoring: metrics+logs to CloudWatch, API calls to CloudTrail
+
+
+EB Elastic Beanstalk
+--------------------
+Apache Tomcat for Java applications
+Apache HTTP Server for PHP applications
+Apache HTTP Server for Python applications
+Nginx or Apache HTTP Server for Node.js applications
+Passenger or Puma for Ruby applications
+Microsoft IIS for .NET applications
+
+
+x
+end of document
